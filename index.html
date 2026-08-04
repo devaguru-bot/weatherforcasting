@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether | Next-Gen Weather Forecast</title>
+  <meta name="description" content="Real-time hyper-local weather forecast, hourly breakdown, interactive temperature charts, 7-day outlook, and air quality index.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Dynamic Animated Weather Background Canvas -->
+  <canvas id="weather-bg-canvas"></canvas>
+
+  <!-- Background Ambient Glow Overlay -->
+  <div class="ambient-glow" id="ambient-glow"></div>
+
+  <!-- App Wrapper -->
+  <div class="app-container">
+    
+    <!-- Header / Navigation Bar -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-cloud-sun-rain"></i>
+        </div>
+        <span class="brand-name">Aether<span class="brand-dot">.</span></span>
+      </div>
+
+      <!-- Search Section -->
+      <div class="search-container">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="search-input" placeholder="Search street, town, village, city or landmark..." autocomplete="off">
+          <button id="clear-search-btn" class="clear-btn hidden" title="Clear">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        
+        <button id="geo-btn" class="icon-btn" title="Use Current Location">
+          <i class="fa-solid fa-location-crosshairs"></i>
+        </button>
+
+        <!-- Search Suggestions Dropdown -->
+        <div id="search-results" class="search-results-dropdown hidden"></div>
+      </div>
+
+      <!-- Units Toggle & Controls -->
+      <div class="header-actions">
+        <div class="unit-toggle-group">
+          <button class="unit-btn active" data-unit="cmetric">°C, km/h</button>
+          <button class="unit-btn" data-unit="imperial">°F, mph</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="main-content">
+
+      <!-- Loading Overlay / Spinner -->
+      <div id="loading-state" class="state-container hidden">
+        <div class="spinner"></div>
+        <p>Fetching weather telemetry...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="error-state" class="state-container hidden">
+        <div class="error-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h3 id="error-title">Location Not Found</h3>
+        <p id="error-message">Could not retrieve weather data for the specified location.</p>
+        <button id="retry-btn" class="primary-btn">Retry Search</button>
+      </div>
+
+      <!-- Weather Dashboard Content -->
+      <div id="dashboard" class="dashboard-grid">
+
+        <!-- HERO WEATHER CARD -->
+        <section class="hero-card glass-panel">
+          <div class="hero-top">
+            <div class="location-details">
+              <h1 id="city-name">Loading...</h1>
+              <p id="location-sub text-muted"><span id="country-name">--</span> • <span id="current-date">--</span></p>
+            </div>
+            <div class="badge-tag" id="weather-tag">
+              <i class="fa-solid fa-sparkles"></i> Live Weather
+            </div>
+          </div>
+
+          <div class="hero-body">
+            <div class="temp-display">
+              <div class="main-temp-group">
+                <span id="current-temp" class="temp-value">--</span>
+                <span class="temp-unit" id="unit-symbol">°C</span>
+              </div>
+              <div class="weather-condition-meta">
+                <h2 id="weather-text">--</h2>
+                <p id="temp-range">H: --° • L: --°</p>
+              </div>
+            </div>
+
+            <div class="weather-illustration" id="hero-icon-container">
+              <i class="fa-solid fa-sun weather-hero-icon" id="hero-icon"></i>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Bar -->
+          <div class="hero-footer">
+            <div class="mini-metric">
+              <i class="fa-solid fa-temperature-half"></i>
+              <div>
+                <span class="metric-label">Feels Like</span>
+                <span class="metric-val" id="feels-like-val">--°</span>
+              </div>
+            </div>
+            <div class="mini-metric">
+              <i class="fa-solid fa-droplet"></i>
+              <div>
+                <span class="metric-label">Precipitation</span>
+                <span class="metric-val" id="precip-val">--%</span>
+              </div>
+            </div>
+            <div class="mini-metric">
+              <i class="fa-solid fa-wind"></i>
+              <div>
+                <span class="metric-label">Wind</span>
+                <span class="metric-val" id="wind-quick-val">-- km/h</span>
+              </div>
+            </div>
+            <div class="mini-metric">
+              <i class="fa-solid fa-sun"></i>
+              <div>
+                <span class="metric-label">UV Index</span>
+                <span class="metric-val" id="uv-quick-val">--</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DETAILED METRICS GRID (6 Cards) -->
+        <section class="metrics-grid">
+          <div class="glass-card metric-card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-droplet"></i> Humidity</span>
+            </div>
+            <div class="card-body">
+              <span class="big-stat" id="humidity-val">--%</span>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="humidity-bar" style="width: 0%"></div>
+              </div>
+              <p class="stat-subtitle" id="dew-point-text">Dew point: --°</p>
+            </div>
+          </div>
+
+          <div class="glass-card metric-card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-wind"></i> Wind Details</span>
+            </div>
+            <div class="card-body">
+              <div class="wind-stat-row">
+                <span class="big-stat" id="wind-speed-val">-- <small id="wind-unit-label">km/h</small></span>
+                <div class="compass-dial">
+                  <i class="fa-solid fa-location-arrow" id="compass-arrow"></i>
+                </div>
+              </div>
+              <p class="stat-subtitle" id="wind-direction-text">Direction: --°</p>
+            </div>
+          </div>
+
+          <div class="glass-card metric-card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-gauge-high"></i> Pressure</span>
+            </div>
+            <div class="card-body">
+              <span class="big-stat" id="pressure-val">-- <small>hPa</small></span>
+              <p class="stat-subtitle" id="pressure-desc">Normal sea level</p>
+            </div>
+          </div>
+
+          <div class="glass-card metric-card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-eye"></i> Visibility</span>
+            </div>
+            <div class="card-body">
+              <span class="big-stat" id="visibility-val">-- <small id="vis-unit-label">km</small></span>
+              <p class="stat-subtitle" id="visibility-desc">Clear view</p>
+            </div>
+          </div>
+
+          <div class="glass-card metric-card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-sun"></i> UV Index</span>
+            </div>
+            <div class="card-body">
+              <div class="uv-stat-row">
+                <span class="big-stat" id="uv-index-val">--</span>
+                <span class="uv-badge" id="uv-category">Moderate</span>
+              </div>
+              <div class="progress-bar-bg uv-bar-bg">
+                <div class="progress-bar-fill uv-fill" id="uv-bar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card metric-card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-cloud"></i> Cloud Cover</span>
+            </div>
+            <div class="card-body">
+              <span class="big-stat" id="cloud-cover-val">--%</span>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="cloud-bar" style="width: 0%"></div>
+              </div>
+              <p class="stat-subtitle" id="cloud-desc">--</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- HOURLY FORECAST & CHART PANEL -->
+        <section class="glass-panel hourly-section">
+          <div class="panel-header">
+            <h3><i class="fa-solid fa-clock"></i> 24-Hour Forecast</h3>
+            <div class="view-tabs">
+              <button class="tab-btn active" id="tab-cards-btn"><i class="fa-solid fa-grip-vertical"></i> Cards</button>
+              <button class="tab-btn" id="tab-chart-btn"><i class="fa-solid fa-chart-line"></i> Trend Chart</button>
+            </div>
+          </div>
+
+          <!-- Cards View -->
+          <div id="hourly-cards-container" class="hourly-cards-scroll">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Interactive Chart View -->
+          <div id="hourly-chart-wrapper" class="chart-container hidden">
+            <canvas id="hourly-chart-canvas"></canvas>
+          </div>
+        </section>
+
+        <!-- TWO-COLUMN SECTION: 7-DAY FORECAST & AIR QUALITY / SUN TRACKER -->
+        <div class="two-column-layout">
+          
+          <!-- 7-DAY FORECAST -->
+          <section class="glass-panel daily-forecast-panel">
+            <div class="panel-header">
+              <h3><i class="fa-solid fa-calendar-week"></i> 7-Day Forecast</h3>
+            </div>
+            <div id="daily-forecast-list" class="daily-forecast-list">
+              <!-- Dynamically populated -->
+            </div>
+          </section>
+
+          <!-- SIDEBAR WIDGETS: AIR QUALITY & SUN TRACKER -->
+          <div class="sidebar-widgets">
+            
+            <!-- AIR QUALITY INDEX (AQI) CARD -->
+            <section class="glass-panel aqi-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-wind"></i> Air Quality Index</h3>
+                <span class="aqi-status-pill" id="aqi-status">Good</span>
+              </div>
+              <div class="aqi-body">
+                <div class="aqi-meter-wrapper">
+                  <div class="aqi-value-display">
+                    <span id="aqi-score">--</span>
+                    <small>US AQI</small>
+                  </div>
+                  <svg class="aqi-gauge-svg" viewBox="0 0 120 70">
+                    <path class="gauge-bg" d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10" stroke-linecap="round"/>
+                    <path class="gauge-fill" id="aqi-gauge-fill" d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="url(#aqi-gradient)" stroke-width="10" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="157"/>
+                    <defs>
+                      <linearGradient id="aqi-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#10b981" />
+                        <stop offset="35%" stop-color="#f59e0b" />
+                        <stop offset="70%" stop-color="#ef4444" />
+                        <stop offset="100%" stop-color="#8b5cf6" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+
+                <div class="aqi-pollutants-grid">
+                  <div class="pollutant-item">
+                    <span class="pol-name">PM2.5</span>
+                    <span class="pol-val" id="pm25-val">--</span>
+                  </div>
+                  <div class="pollutant-item">
+                    <span class="pol-name">PM10</span>
+                    <span class="pol-val" id="pm10-val">--</span>
+                  </div>
+                  <div class="pollutant-item">
+                    <span class="pol-name">NO₂</span>
+                    <span class="pol-val" id="no2-val">--</span>
+                  </div>
+                  <div class="pollutant-item">
+                    <span class="pol-name">O₃</span>
+                    <span class="pol-val" id="o3-val">--</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- SUN & MOON CYCLE CARD -->
+            <section class="glass-panel sun-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-sun-plant-wilt"></i> Sun & Moon</h3>
+              </div>
+              <div class="sun-body">
+                <div class="sun-arc-container">
+                  <svg class="sun-arc-svg" viewBox="0 0 200 100">
+                    <path d="M 20 90 A 80 80 0 0 1 180 90" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-dasharray="4 4"/>
+                    <circle id="sun-position-dot" cx="20" cy="90" r="7" fill="#fbbf24" filter="drop-shadow(0 0 6px rgba(251, 191, 36, 0.8))"/>
+                  </svg>
+                </div>
+                <div class="sun-times-row">
+                  <div class="sun-time-item">
+                    <i class="fa-solid fa-sun-up sun-icon-rise"></i>
+                    <div>
+                      <span class="time-label">Sunrise</span>
+                      <span class="time-val" id="sunrise-val">--:--</span>
+                    </div>
+                  </div>
+                  <div class="daylight-duration">
+                    <span class="daylight-label">Daylight</span>
+                    <span class="daylight-val" id="daylight-val">-- hrs</span>
+                  </div>
+                  <div class="sun-time-item">
+                    <i class="fa-solid fa-sun-down sun-icon-set"></i>
+                    <div>
+                      <span class="time-label">Sunset</span>
+                      <span class="time-val" id="sunset-val">--:--</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <p>Aether Weather • Powered by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo API</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
